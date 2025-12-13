@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-ROOT_DIR = r"~/Developer/Belllm/belllm/data"
+from belllm.utils.constants import ROOT_DIR
 
 
 def get_root_dir():

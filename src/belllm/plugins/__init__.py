@@ -1,9 +1,10 @@
 import os
 
-from src.belllm_utils.constants import get_root_dir
+from belllm.plugins.memory_bank import save_to_memory_bank
+from belllm.utils import get_root_dir
 
 
-library = {}
+library = None
 
 
 def get_plugins_dir():
@@ -17,6 +18,16 @@ def list_plugins():
 def initialise_plugins():
     import sys
     import importlib
+
+    global library
+
+    library = {}
+
+    library['memory_bank.save'] = {
+        "function": save_to_memory_bank,
+        "description": save_to_memory_bank.__doc__,
+        "annotations": save_to_memory_bank.__annotations__,
+    }
 
     for plugin in list_plugins():
     #     plugins[plugin] = {
