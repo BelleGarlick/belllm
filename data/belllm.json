@@ -1,9 +1,0 @@
-{
-  "agent": {
-    "type": "ollama",
-    "model": "ministral-3:8b"
-  },
-  "api": {
-    "port": 42069
-  }
-}

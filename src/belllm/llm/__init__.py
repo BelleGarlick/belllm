@@ -2,8 +2,8 @@ import belllm.plugins
 from belllm import config
 from belllm.chats.models import Chat, ChatMessages, Message
 from belllm.llm.models import LlmResponse, LlmPluginContext
-from belllm.plugins.memory_bank import get_memory_bank
 from belllm.utils import get_root_dir
+import belllm.context
 
 
 def _call_llm(tools, messages: ChatMessages) -> LlmResponse:
@@ -21,7 +21,26 @@ def _call_llm(tools, messages: ChatMessages) -> LlmResponse:
 
 
 def _call_llm_with_tools(tools, messages: ChatMessages):
-    full_messages = [Message(role="tool", tool_name="memory-bank", content=get_memory_bank()), *messages]
+    # todo change so only added once per chat instance
+    full_messages = []
+
+    global_context_message = belllm.context.get_system_message_for_global_context()
+    if global_context_message:
+            full_messages.append(Message(
+                role="system",
+                content=global_context_message
+            ))
+
+    for tool in belllm.plugins.get_prechat_script():
+        content = tool["run"]()
+        if content:
+            full_messages.append(Message(
+                role="system",
+                tool_name=tool["name"],
+                content=content
+            ))
+
+    full_messages = [*full_messages, *messages]
 
     response = _call_llm(
         messages=full_messages,
@@ -30,7 +49,7 @@ def _call_llm_with_tools(tools, messages: ChatMessages):
 
     if response.tool_calls:
         for call in response.tool_calls:
-            tool = belllm.plugins.library.get(call.function.name)
+            tool = belllm.plugins.get_library().get(call.function.name)
             tool['function'].__globals__['ctx'] = LlmPluginContext(
                 global_user_data_path=get_root_dir(),
                 call_llm=lambda input_message: _call_llm(
@@ -52,11 +71,8 @@ def _call_llm_with_tools(tools, messages: ChatMessages):
 
 
 def chat(request: Chat):
-    if belllm.plugins.library is None:
-        belllm.plugins.initialise_plugins()
-
     tools = []
-    for tool_name, tool_desc in belllm.plugins.library.items():
+    for tool_name, tool_desc in belllm.plugins.get_library().items():
         props = {}
         required_props = []
         for prop in tool_desc["annotations"]:
@@ -81,7 +97,6 @@ def chat(request: Chat):
                 }
             }
         })
-
 
     llm_response = _call_llm_with_tools(tools, request.messages)
     # print("stream thinking or whatever maybe")
