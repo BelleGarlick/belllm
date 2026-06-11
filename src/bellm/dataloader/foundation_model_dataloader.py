@@ -3,8 +3,9 @@ import random
 from pathlib import Path
 from threading import Thread
 
+import torch
+import torch.nn.functional as F
 import numpy as np
-
 from bellm.dataset.utils.dataset_metadata import DatasetMetadata
 from bellm.dataset.utils.utils import load_shard
 from bellm.tokeniser import Tokeniser
@@ -71,7 +72,8 @@ class FoundationDataLoader:
             batch_size: int,
             tokeniser: Tokeniser,
             input_context_length,
-            output_context_length
+            output_context_length,
+            device: torch.device | None,
     ):
         self.path = path
         self.batch_size = batch_size
@@ -88,6 +90,8 @@ class FoundationDataLoader:
 
         self.current_shard = None
         self.next_shard = None
+
+        self.device = device
 
     @property
     def batch_count(self):
@@ -137,6 +141,19 @@ class FoundationDataLoader:
         end = self.current_idx_in_shard + self.batch_size
         batch = self.current_shard[start:end]
         self.current_idx_in_shard = end
+
+        # Cast to tensors
+        batch = (
+            torch.tensor(batch[0], dtype=torch.long),
+            torch.tensor(batch[1], dtype=torch.long),
+        )
+
+        # If device is set, cast to device
+        if self.device is not None:
+            batch = (
+                batch[0].to(device=self.device),
+                batch[1].to(device=self.device)
+            )
 
         return batch
 

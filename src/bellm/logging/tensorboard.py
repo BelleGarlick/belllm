@@ -2,6 +2,8 @@ from typing import List, Tuple
 
 import mlflow
 
+from clpi import BaseClpIModel
+
 
 class MLflowInterface:
 
@@ -21,7 +23,7 @@ class MLflowInterface:
         metrics = {
             "loss/train": train_loss,
             "loss/val": validation_loss,
-            "system/learning_rate": learning_rate
+            "system/learning-rate": learning_rate
         }
         mlflow.log_metrics(metrics, step=epoch)
 
@@ -43,10 +45,10 @@ class MLflowInterface:
         mlflow.set_tag("Batch", f"{bidx}/{int(batch_count)}")
         mlflow.set_tag("Avg Epoch Validation Loss", round(avg_validation_loss, 5))
 
-    def log_test_text(self, prompts: List[Tuple[str, str]], epoch):
-        artifact_path = f"text_logs/epoch_{epoch}"
-        # mlflow.log_text(message, f"{artifact_path}/{title}.txt")
-        full_note = f"# Epoch {epoch}\n\n"
+    def log_test_text(self, args: BaseClpIModel, prompts: List[Tuple[str, str]], epoch):
+        text_args = args.model_dump_json(indent=4)
+
+        full_note = f"# Args\n ```json\n{text_args}\n``` \n\n# Epoch {epoch}\n\n"
         for title, message in prompts:
             full_note += f"### {title}\n{message}\n\n"
         mlflow.set_tag("mlflow.note.content", full_note)
