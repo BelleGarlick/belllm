@@ -6,6 +6,8 @@ from clpi.base_clpi_model import BaseClpIModel
 
 ParserMap: TypeAlias = Union[BaseClpIModel, Dict[str, "ITEMS"]]
 
+# TODO ALL OF THIS IS WRONG
+# THE PARSER FOR ARGS IS WRONG. It uses --x=hi. it should be --x hi
 
 def parse_vars(args: List[str]) -> Dict:
     arg_options = {}
@@ -90,7 +92,6 @@ def parse(args: List[str], parser_map: ParserMap):
             break
 
         tok = args[tok_index] if tok_index < len(args) else None
-
 
         if tok is not None and tok in func_map:
             func_map = func_map[tok]

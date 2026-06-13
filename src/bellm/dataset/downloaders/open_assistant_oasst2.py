@@ -1,13 +1,7 @@
-import json
-import os
-
-import shutil
 from pathlib import Path
 
 from datasets import load_dataset
-
-from bellm.dataset.utils.utils import save_shard, should_redownload, save_dataset_metadata
-from bellm.dataset.utils.dataset_metadata import DatasetMetadata, DatasetShardMetadata
+import webdataset as wds
 
 PATH = "OpenAssistant/oasst2"
 
@@ -49,27 +43,12 @@ def oasst_adapter(data):
     # Trigger breath first search
     traverse_head(heads, [])
 
-    conversations = [json.dumps(x) for x in conversations]
-
     return conversations
 
 
-def download_oasst_split(parent_path: Path, split: str):
-    dataset_id = f"hf_{PATH.replace('/', '_')}"
-    output_path = parent_path / split / dataset_id
-    metadata_path = output_path / "metadata.json"
-
-    dataset_split_id = f"{dataset_id}_{split}"
-    print(f" - {dataset_split_id}...")
-
-    if not should_redownload(metadata_path, dataset_split_id):
-        return
-
-    if os.path.exists(metadata_path):
-        shutil.rmtree(output_path)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    output_metadata = DatasetMetadata(id=dataset_split_id)
+def download_oasst_split(writer: wds.ShardWriter, split: str):
+    # if not should_redownload(metadata_path, dataset_split_id):
+    #     return
 
     dataset = load_dataset(
         PATH,
@@ -81,18 +60,15 @@ def download_oasst_split(parent_path: Path, split: str):
     items = list(dataset)
     items = oasst_adapter(items)
 
-    # Create the shard, here we'll just create one large shard but this could be changed in future
-    shard_name = f"0.txt"
-    save_shard(output_path / shard_name, items)
-
-    # Add this shard to the metadata
-    output_metadata.length += len(items)
-    output_metadata.shards.append(DatasetShardMetadata(uri=shard_name, length=len(items)))
-
-    # Save the dataset metadata
-    save_dataset_metadata(metadata_path, output_metadata)
+    for i, item in enumerate(items):
+        writer.write({
+            "__key__": f"oasst_{split}_{i}",
+            "json": item,
+            "dataset.source": "oasst",
+            "dataset.name": "default",
+        })
 
 
-def download_oasst(parent_path: Path):
-    download_oasst_split(parent_path, "train")
-    download_oasst_split(parent_path, "validation")
+def download_oasst(train_writer, validation_writer):
+    download_oasst_split(train_writer, "train")
+    download_oasst_split(validation_writer, "validation")
